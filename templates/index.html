@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Textly - AI Text Correction</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>✍️ Textly</h1>
+            <p>AI-powered text correction that preserves your unique style</p>
+        </header>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="messages">
+                    {% for category, message in messages %}
+                        <div class="message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <main>
+            <form id="grammarForm" method="POST" action="{{ url_for('correct_text') }}">
+                <div class="form-group">
+                    <label for="text">Enter your text:</label>
+                    <textarea 
+                        id="text" 
+                        name="text" 
+                        rows="8" 
+                        placeholder="Type or paste your text here to fix text..."
+                        required>{{ original_text or '' }}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="provider">Choose AI Provider:</label>
+                    <select id="provider" name="provider">
+                        <option value="openai" {{ 'selected' if provider == 'openai' else '' }}>OpenAI GPT</option>
+                        <option value="claude" {{ 'selected' if provider == 'claude' else '' }}>Anthropic Claude</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn-primary" id="fixButton">
+                        <span class="button-text">✨ Perfect My Text</span>
+                        <span class="loader" style="display: none;">⏳ Fixing...</span>
+                    </button>
+                </div>
+            </form>
+
+            {% if corrected_text %}
+            <div class="results">
+                <h2>✅ Corrected Text</h2>
+                <div class="result-box">
+                    <div class="result-content">{{ corrected_text }}</div>
+                    <button onclick="copyToClipboard()" class="btn-copy">📋 Copy</button>
+                </div>
+                
+                {% if original_text and original_text != corrected_text %}
+                <div class="comparison">
+                    <h3>📝 Original vs Corrected</h3>
+                    <div class="comparison-grid">
+                        <div class="original">
+                            <h4>Original:</h4>
+                            <div class="text-box">{{ original_text }}</div>
+                        </div>
+                        <div class="corrected">
+                            <h4>Corrected:</h4>
+                            <div class="text-box">{{ corrected_text }}</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </main>
+
+        <footer>
+            <p>Powered by {{ provider or 'AI' | title }} • Textly</p>
+        </footer>
+    </div>
+
+    <script>
+        function copyToClipboard() {
+            const resultContent = document.querySelector('.result-content');
+            const text = resultContent.textContent;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                const button = document.querySelector('.btn-copy');
+                const originalText = button.textContent;
+                button.textContent = '✅ Copied!';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
+        }
+
+        // Handle AJAX form submission with loader
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('grammarForm');
+            const fixButton = document.getElementById('fixButton');
+            const buttonText = fixButton.querySelector('.button-text');
+            const loader = fixButton.querySelector('.loader');
+            const resultsContainer = document.querySelector('main');
+            
+            form.addEventListener('submit', function(e) {
+                e.preventDefault(); // Prevent normal form submission
+                
+                // Show loader and disable button
+                buttonText.style.display = 'none';
+                loader.style.display = 'inline';
+                fixButton.disabled = true;
+                fixButton.style.opacity = '0.7';
+                fixButton.style.cursor = 'not-allowed';
+                
+                // Get form data
+                const formData = new FormData(form);
+                
+                // Submit via AJAX
+                fetch('/correct', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Reset button state
+                    buttonText.style.display = 'inline';
+                    loader.style.display = 'none';
+                    fixButton.disabled = false;
+                    fixButton.style.opacity = '1';
+                    fixButton.style.cursor = 'pointer';
+                    
+                    if (data.success) {
+                        // Display results
+                        displayResults(data.original_text, data.corrected_text, data.provider);
+                    } else {
+                        // Show error
+                        showError(data.error);
+                    }
+                })
+                .catch(error => {
+                    // Reset button state
+                    buttonText.style.display = 'inline';
+                    loader.style.display = 'none';
+                    fixButton.disabled = false;
+                    fixButton.style.opacity = '1';
+                    fixButton.style.cursor = 'pointer';
+                    
+                    showError('An error occurred: ' + error.message);
+                });
+            });
+            
+            function displayResults(originalText, correctedText, provider) {
+                const existingResults = document.querySelector('.results');
+                if (existingResults) {
+                    existingResults.remove();
+                }
+                
+                const resultsHTML = `
+                    <div class="results">
+                        <h2>✅ Corrected Text</h2>
+                        <div class="result-box">
+                            <div class="result-content">${correctedText}</div>
+                            <button onclick="copyToClipboard()" class="btn-copy">📋 Copy</button>
+                        </div>
+                        
+                        ${originalText !== correctedText ? `
+                        <div class="comparison">
+                            <h3>📝 Original vs Corrected</h3>
+                            <div class="comparison-grid">
+                                <div class="original">
+                                    <h4>Original:</h4>
+                                    <div class="text-box">${originalText}</div>
+                                </div>
+                                <div class="corrected">
+                                    <h4>Corrected:</h4>
+                                    <div class="text-box">${correctedText}</div>
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                resultsContainer.insertAdjacentHTML('beforeend', resultsHTML);
+                
+                // Update footer
+                const footer = document.querySelector('footer p');
+                footer.textContent = `Powered by ${provider.charAt(0).toUpperCase() + provider.slice(1)} • Textly`;
+            }
+            
+            function showError(message) {
+                const existingMessages = document.querySelector('.messages');
+                if (existingMessages) {
+                    existingMessages.remove();
+                }
+                
+                const errorHTML = `
+                    <div class="messages">
+                        <div class="message error">${message}</div>
+                    </div>
+                `;
+                
+                const main = document.querySelector('main');
+                main.insertAdjacentHTML('afterbegin', errorHTML);
+            }
+        });
+    </script>
+</body>
+</html>
