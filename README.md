@@ -1,6 +1,10 @@
 # Textly
 
-AI-powered text correction that preserves your unique writing style. A sleek Flask web application that fixes grammar and improves clarity while maintaining your original tone. Supports both OpenAI GPT and Anthropic Claude.
+AI-powered text processing that transforms your writing. A sleek Flask web application that can fix grammar, rewrite tone, summarize content, expand details, and analyze sentiment while preserving your intent. Supports both OpenAI GPT and Anthropic Claude.
+
+## Screenshots
+![Main Interface](screenshots/main-interface.png)
+![Sample Usage](screenshots/usage.png)
 
 ## Features
 
