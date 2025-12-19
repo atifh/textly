@@ -10,7 +10,7 @@
     <div class="container">
         <header>
             <h1>✍️ Textly</h1>
-            <p>AI-powered text correction that preserves your unique style</p>
+            <p>AI-powered text processing: fix, rewrite, summarize, expand & analyze</p>
         </header>
 
         <!-- Flash Messages -->
@@ -25,15 +25,27 @@
         {% endwith %}
 
         <main>
-            <form id="grammarForm" method="POST" action="{{ url_for('correct_text') }}">
+            <form id="grammarForm" method="POST" action="{{ url_for('process_text') }}">
                 <div class="form-group">
                     <label for="text">Enter your text:</label>
                     <textarea 
                         id="text" 
                         name="text" 
                         rows="8" 
-                        placeholder="Type or paste your text here to fix text..."
+                        placeholder="Type or paste your text here..."
                         required>{{ original_text or '' }}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="mode">Processing Mode:</label>
+                    <select id="mode" name="mode" onchange="updateButtonText()">
+                        <option value="fix" {{ 'selected' if mode == 'fix' else '' }}>🔧 Grammar & Spelling Fix</option>
+                        <option value="rewrite_formal" {{ 'selected' if mode == 'rewrite_formal' else '' }}>👔 Make Formal</option>
+                        <option value="rewrite_casual" {{ 'selected' if mode == 'rewrite_casual' else '' }}>💬 Make Casual</option>
+                        <option value="summarize" {{ 'selected' if mode == 'summarize' else '' }}>📝 Summarize</option>
+                        <option value="expand" {{ 'selected' if mode == 'expand' else '' }}>📈 Expand & Detail</option>
+                        <option value="sentiment" {{ 'selected' if mode == 'sentiment' else '' }}>😊 Sentiment Analysis</option>
+                    </select>
                 </div>
 
                 <div class="form-group">
@@ -45,32 +57,32 @@
                 </div>
 
                 <div class="form-group">
-                    <button type="submit" class="btn-primary" id="fixButton">
-                        <span class="button-text">✨ Perfect My Text</span>
-                        <span class="loader" style="display: none;">⏳ Fixing...</span>
+                    <button type="submit" class="btn-primary" id="processButton">
+                        <span class="button-text" id="buttonText">✨ Process Text</span>
+                        <span class="loader" style="display: none;">⏳ Processing...</span>
                     </button>
                 </div>
             </form>
 
-            {% if corrected_text %}
+            {% if processed_text or corrected_text %}
             <div class="results">
-                <h2>✅ Corrected Text</h2>
+                <h2>✅ {{ mode_label or 'Processed Text' }}</h2>
                 <div class="result-box">
-                    <div class="result-content">{{ corrected_text }}</div>
+                    <div class="result-content">{{ processed_text or corrected_text }}</div>
                     <button onclick="copyToClipboard()" class="btn-copy">📋 Copy</button>
                 </div>
                 
-                {% if original_text and original_text != corrected_text %}
+                {% if original_text and original_text != (processed_text or corrected_text) %}
                 <div class="comparison">
-                    <h3>📝 Original vs Corrected</h3>
+                    <h3>📝 Original vs {{ mode_label or 'Processed' }}</h3>
                     <div class="comparison-grid">
                         <div class="original">
                             <h4>Original:</h4>
                             <div class="text-box">{{ original_text }}</div>
                         </div>
-                        <div class="corrected">
-                            <h4>Corrected:</h4>
-                            <div class="text-box">{{ corrected_text }}</div>
+                        <div class="processed">
+                            <h4>{{ mode_label or 'Processed' }}:</h4>
+                            <div class="text-box">{{ processed_text or corrected_text }}</div>
                         </div>
                     </div>
                 </div>
@@ -101,13 +113,33 @@
             });
         }
 
+        // Update button text based on selected mode
+        function updateButtonText() {
+            const mode = document.getElementById('mode').value;
+            const buttonText = document.getElementById('buttonText');
+            
+            const buttonTexts = {
+                'fix': '🔧 Fix Grammar',
+                'rewrite_formal': '👔 Make Formal', 
+                'rewrite_casual': '💬 Make Casual',
+                'summarize': '📝 Summarize',
+                'expand': '📈 Expand Text',
+                'sentiment': '😊 Analyze Sentiment'
+            };
+            
+            buttonText.textContent = buttonTexts[mode] || '✨ Process Text';
+        }
+
         // Handle AJAX form submission with loader
         document.addEventListener('DOMContentLoaded', function() {
             const form = document.getElementById('grammarForm');
-            const fixButton = document.getElementById('fixButton');
-            const buttonText = fixButton.querySelector('.button-text');
-            const loader = fixButton.querySelector('.loader');
+            const processButton = document.getElementById('processButton');
+            const buttonText = processButton.querySelector('.button-text');
+            const loader = processButton.querySelector('.loader');
             const resultsContainer = document.querySelector('main');
+            
+            // Initialize button text
+            updateButtonText();
             
             form.addEventListener('submit', function(e) {
                 e.preventDefault(); // Prevent normal form submission
@@ -115,15 +147,15 @@
                 // Show loader and disable button
                 buttonText.style.display = 'none';
                 loader.style.display = 'inline';
-                fixButton.disabled = true;
-                fixButton.style.opacity = '0.7';
-                fixButton.style.cursor = 'not-allowed';
+                processButton.disabled = true;
+                processButton.style.opacity = '0.7';
+                processButton.style.cursor = 'not-allowed';
                 
                 // Get form data
                 const formData = new FormData(form);
                 
                 // Submit via AJAX
-                fetch('/correct', {
+                fetch('/process', {
                     method: 'POST',
                     body: formData
                 })
@@ -132,13 +164,13 @@
                     // Reset button state
                     buttonText.style.display = 'inline';
                     loader.style.display = 'none';
-                    fixButton.disabled = false;
-                    fixButton.style.opacity = '1';
-                    fixButton.style.cursor = 'pointer';
+                    processButton.disabled = false;
+                    processButton.style.opacity = '1';
+                    processButton.style.cursor = 'pointer';
                     
                     if (data.success) {
                         // Display results
-                        displayResults(data.original_text, data.corrected_text, data.provider);
+                        displayResults(data.original_text, data.processed_text, data.provider, data.mode_label);
                     } else {
                         // Show error
                         showError(data.error);
@@ -148,15 +180,15 @@
                     // Reset button state
                     buttonText.style.display = 'inline';
                     loader.style.display = 'none';
-                    fixButton.disabled = false;
-                    fixButton.style.opacity = '1';
-                    fixButton.style.cursor = 'pointer';
+                    processButton.disabled = false;
+                    processButton.style.opacity = '1';
+                    processButton.style.cursor = 'pointer';
                     
                     showError('An error occurred: ' + error.message);
                 });
             });
             
-            function displayResults(originalText, correctedText, provider) {
+            function displayResults(originalText, processedText, provider, modeLabel) {
                 const existingResults = document.querySelector('.results');
                 if (existingResults) {
                     existingResults.remove();
@@ -164,23 +196,23 @@
                 
                 const resultsHTML = `
                     <div class="results">
-                        <h2>✅ Corrected Text</h2>
+                        <h2>✅ ${modeLabel}</h2>
                         <div class="result-box">
-                            <div class="result-content">${correctedText}</div>
+                            <div class="result-content">${processedText}</div>
                             <button onclick="copyToClipboard()" class="btn-copy">📋 Copy</button>
                         </div>
                         
-                        ${originalText !== correctedText ? `
+                        ${originalText !== processedText ? `
                         <div class="comparison">
-                            <h3>📝 Original vs Corrected</h3>
+                            <h3>📝 Original vs ${modeLabel}</h3>
                             <div class="comparison-grid">
                                 <div class="original">
                                     <h4>Original:</h4>
                                     <div class="text-box">${originalText}</div>
                                 </div>
-                                <div class="corrected">
-                                    <h4>Corrected:</h4>
-                                    <div class="text-box">${correctedText}</div>
+                                <div class="processed">
+                                    <h4>${modeLabel}:</h4>
+                                    <div class="text-box">${processedText}</div>
                                 </div>
                             </div>
                         </div>

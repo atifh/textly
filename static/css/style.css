@@ -233,7 +233,8 @@ select {
     border-color: #fecaca;
 }
 
-.corrected .text-box {
+.corrected .text-box,
+.processed .text-box {
     background: #f0fff4;
     border-color: #c6f6d5;
 }

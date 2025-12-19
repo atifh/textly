@@ -4,12 +4,21 @@ AI-powered text correction that preserves your unique writing style. A sleek Fla
 
 ## Features
 
-- 🔧 Grammar and spelling correction
-- 🎯 Maintains original tone and style
+### 🚀 Text Processing Modes
+- 🔧 **Grammar & Spelling Fix**: Correct errors while preserving your style
+- 👔 **Make Formal**: Convert text to professional, business-appropriate tone
+- 💬 **Make Casual**: Transform text to friendly, conversational style  
+- 📝 **Summarize**: Condense long texts while maintaining key points
+- 📈 **Expand & Detail**: Make text more comprehensive and professional
+- 😊 **Sentiment Analysis**: Detect emotional tone (positive/negative/neutral)
+
+### ⚡ Core Features
 - 🔄 Switch between OpenAI GPT and Anthropic Claude
-- 📱 Responsive web interface
-- 📋 Copy corrected text to clipboard
-- 📊 Side-by-side comparison of original vs corrected text
+- 📱 Responsive web interface with intuitive controls
+- 📋 Copy processed text to clipboard with one click
+- 📊 Side-by-side comparison of original vs processed text
+- ✨ Dynamic button labels that update based on selected mode
+- 🎯 AI-powered processing that maintains context and meaning
 
 ## Setup
 
@@ -38,11 +47,19 @@ AI-powered text correction that preserves your unique writing style. A sleek Fla
 
 ## Usage
 
-1. Open the web interface
-2. Enter or paste your text in the textarea
-3. Choose your preferred AI provider (OpenAI GPT or Anthropic Claude)
-4. Click "Fix Grammar" to get the corrected version
-5. Copy the result or compare with the original text
+1. **Open the web interface** at http://localhost:5002
+2. **Enter your text** in the textarea (type or paste)
+3. **Select processing mode**:
+   - 🔧 Grammar & Spelling Fix - Fix errors while preserving style
+   - 👔 Make Formal - Convert to professional tone
+   - 💬 Make Casual - Convert to conversational tone
+   - 📝 Summarize - Create concise summary
+   - 📈 Expand & Detail - Add depth and professionalism
+   - 😊 Sentiment Analysis - Analyze emotional tone
+4. **Choose AI provider** (OpenAI GPT or Anthropic Claude)
+5. **Click the process button** (label updates based on selected mode)
+6. **Review results** with side-by-side comparison
+7. **Copy processed text** to clipboard for use elsewhere
 
 ## Project Structure
 
