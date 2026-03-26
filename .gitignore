@@ -51,3 +51,6 @@ venv/*
 # Git worktrees
 .worktrees/
 
+# Node
+node_modules/
+
