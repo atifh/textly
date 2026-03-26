@@ -7,7 +7,7 @@ __pycache__/
 *.so
 
 # Distribution / packaging
-.Python
+.Python 
 build/
 develop-eggs/
 eggs/
@@ -47,4 +47,7 @@ venv/*
 .DS_Store
 .AppleDouble
 .LSOverride
+
+# Git worktrees
+.worktrees/
 
