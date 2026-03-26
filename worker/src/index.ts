@@ -152,8 +152,17 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/api/process" && request.method === "POST") {
+      let body: ProcessRequest;
       try {
-        const body = (await request.json()) as ProcessRequest;
+        body = (await request.json()) as ProcessRequest;
+      } catch {
+        return Response.json(
+          { error: "Invalid JSON body." },
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      try {
         const { text, mode, provider } = body;
 
         if (!text || !text.trim()) {
@@ -165,7 +174,7 @@ export default {
 
         if (!MODE_LABELS[mode]) {
           return Response.json(
-            { error: `Unsupported mode: ${mode}` },
+            { error: `Unsupported mode: ${mode ?? "missing"}` },
             { status: 400, headers: corsHeaders }
           );
         }
@@ -177,7 +186,7 @@ export default {
           result = await callAnthropic(env, text.trim(), mode);
         } else {
           return Response.json(
-            { error: `Unsupported provider: ${provider}` },
+            { error: `Unsupported provider: ${provider ?? "missing"}` },
             { status: 400, headers: corsHeaders }
           );
         }
