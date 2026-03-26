@@ -109,6 +109,33 @@ async function callOpenAI(env: Env, text: string, mode: string): Promise<string>
   return data.choices[0].message.content.trim();
 }
 
+async function callAnthropic(env: Env, text: string, mode: string): Promise<string> {
+  const prompt = getPrompt(text, mode);
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: prompt.maxTokens,
+      system: prompt.system,
+      messages: [{ role: "user", content: prompt.user }],
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Anthropic API error: ${err}`);
+  }
+
+  const data = (await response.json()) as { content: { text: string }[] };
+  return data.content[0].text.trim();
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     return new Response("OK");
