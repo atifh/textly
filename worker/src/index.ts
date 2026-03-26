@@ -138,6 +138,69 @@ async function callAnthropic(env: Env, text: string, mode: string): Promise<stri
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    return new Response("OK");
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    };
+
+    // Handle CORS preflight
+    if (request.method === "OPTIONS") {
+      return new Response(null, { headers: corsHeaders });
+    }
+
+    const url = new URL(request.url);
+
+    if (url.pathname === "/api/process" && request.method === "POST") {
+      try {
+        const body = (await request.json()) as ProcessRequest;
+        const { text, mode, provider } = body;
+
+        if (!text || !text.trim()) {
+          return Response.json(
+            { error: "Please enter some text to process." },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        if (!MODE_LABELS[mode]) {
+          return Response.json(
+            { error: `Unsupported mode: ${mode}` },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        let result: string;
+        if (provider === "openai") {
+          result = await callOpenAI(env, text.trim(), mode);
+        } else if (provider === "claude") {
+          result = await callAnthropic(env, text.trim(), mode);
+        } else {
+          return Response.json(
+            { error: `Unsupported provider: ${provider}` },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        return Response.json(
+          {
+            success: true,
+            original_text: text.trim(),
+            processed_text: result,
+            provider,
+            mode,
+            mode_label: MODE_LABELS[mode],
+          },
+          { headers: corsHeaders }
+        );
+      } catch (err) {
+        return Response.json(
+          { error: (err as Error).message },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    return new Response("Not Found", { status: 404 });
   },
 };
