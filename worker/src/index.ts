@@ -80,6 +80,35 @@ function getPrompt(text: string, mode: string): PromptConfig {
   return prompts[mode];
 }
 
+async function callOpenAI(env: Env, text: string, mode: string): Promise<string> {
+  const prompt = getPrompt(text, mode);
+
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: prompt.system },
+        { role: "user", content: prompt.user },
+      ],
+      max_tokens: prompt.maxTokens,
+      temperature: prompt.temperature,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`OpenAI API error: ${err}`);
+  }
+
+  const data = (await response.json()) as { choices: { message: { content: string } }[] };
+  return data.choices[0].message.content.trim();
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     return new Response("OK");
