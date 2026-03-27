@@ -62,6 +62,12 @@
     <script>
         const WORKER_URL = 'https://textly-worker.YOUR-SUBDOMAIN.workers.dev';
 
+        function escapeHTML(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
         function copyToClipboard() {
             const resultContent = document.querySelector('.result-content');
             const text = resultContent.textContent;
@@ -156,23 +162,23 @@
 
                 const resultsHTML = `
                     <div class="results">
-                        <h2>✅ ${modeLabel}</h2>
+                        <h2>✅ ${escapeHTML(modeLabel)}</h2>
                         <div class="result-box">
-                            <div class="result-content">${processedText}</div>
+                            <div class="result-content">${escapeHTML(processedText)}</div>
                             <button onclick="copyToClipboard()" class="btn-copy">📋 Copy</button>
                         </div>
 
                         ${originalText !== processedText ? `
                         <div class="comparison">
-                            <h3>📝 Original vs ${modeLabel}</h3>
+                            <h3>📝 Original vs ${escapeHTML(modeLabel)}</h3>
                             <div class="comparison-grid">
                                 <div class="original">
                                     <h4>Original:</h4>
-                                    <div class="text-box">${originalText}</div>
+                                    <div class="text-box">${escapeHTML(originalText)}</div>
                                 </div>
                                 <div class="processed">
-                                    <h4>${modeLabel}:</h4>
-                                    <div class="text-box">${processedText}</div>
+                                    <h4>${escapeHTML(modeLabel)}:</h4>
+                                    <div class="text-box">${escapeHTML(processedText)}</div>
                                 </div>
                             </div>
                         </div>
@@ -183,7 +189,7 @@
                 resultsContainer.insertAdjacentHTML('beforeend', resultsHTML);
 
                 const footer = document.querySelector('footer p');
-                footer.textContent = `Powered by ${provider.charAt(0).toUpperCase() + provider.slice(1)} • Textly`;
+                footer.textContent = `Powered by ${escapeHTML(provider.charAt(0).toUpperCase() + provider.slice(1))} • Textly`;
             }
 
             function showError(message) {
@@ -194,7 +200,7 @@
 
                 const errorHTML = `
                     <div class="messages">
-                        <div class="message error">${message}</div>
+                        <div class="message error">${escapeHTML(message)}</div>
                     </div>
                 `;
 
