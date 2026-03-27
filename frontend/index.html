@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Textly - AI Text Correction</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>✍️ Textly</h1>
+            <p>AI-powered text processing: fix, rewrite, summarize, expand & analyze</p>
+        </header>
+
+        <main>
+            <form id="grammarForm">
+                <div class="form-group">
+                    <label for="text">Enter your text:</label>
+                    <textarea
+                        id="text"
+                        name="text"
+                        rows="8"
+                        placeholder="Type or paste your text here..."
+                        required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="mode">Processing Mode:</label>
+                    <select id="mode" name="mode" onchange="updateButtonText()">
+                        <option value="fix">🔧 Grammar & Spelling Fix</option>
+                        <option value="rewrite_formal">👔 Make Formal</option>
+                        <option value="rewrite_casual">💬 Make Casual</option>
+                        <option value="summarize">📝 Summarize</option>
+                        <option value="expand">📈 Expand & Detail</option>
+                        <option value="sentiment">😊 Sentiment Analysis</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="provider">Choose AI Provider:</label>
+                    <select id="provider" name="provider">
+                        <option value="openai">OpenAI GPT</option>
+                        <option value="claude">Anthropic Claude</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn-primary" id="processButton">
+                        <span class="button-text" id="buttonText">✨ Process Text</span>
+                        <span class="loader" style="display: none;">⏳ Processing...</span>
+                    </button>
+                </div>
+            </form>
+        </main>
+
+        <footer>
+            <p>Powered by AI • Textly</p>
+        </footer>
+    </div>
+
+    <script>
+        const WORKER_URL = 'https://textly-worker.YOUR-SUBDOMAIN.workers.dev';
+
+        function copyToClipboard() {
+            const resultContent = document.querySelector('.result-content');
+            const text = resultContent.textContent;
+
+            navigator.clipboard.writeText(text).then(() => {
+                const button = document.querySelector('.btn-copy');
+                const originalText = button.textContent;
+                button.textContent = '✅ Copied!';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
+        }
+
+        function updateButtonText() {
+            const mode = document.getElementById('mode').value;
+            const buttonText = document.getElementById('buttonText');
+
+            const buttonTexts = {
+                'fix': '🔧 Fix Grammar',
+                'rewrite_formal': '👔 Make Formal',
+                'rewrite_casual': '💬 Make Casual',
+                'summarize': '📝 Summarize',
+                'expand': '📈 Expand Text',
+                'sentiment': '😊 Analyze Sentiment'
+            };
+
+            buttonText.textContent = buttonTexts[mode] || '✨ Process Text';
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('grammarForm');
+            const processButton = document.getElementById('processButton');
+            const buttonText = processButton.querySelector('.button-text');
+            const loader = processButton.querySelector('.loader');
+            const resultsContainer = document.querySelector('main');
+
+            updateButtonText();
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                buttonText.style.display = 'none';
+                loader.style.display = 'inline';
+                processButton.disabled = true;
+                processButton.style.opacity = '0.7';
+                processButton.style.cursor = 'not-allowed';
+
+                const formData = new FormData(form);
+
+                fetch(WORKER_URL + '/api/process', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: formData.get('text'),
+                        mode: formData.get('mode'),
+                        provider: formData.get('provider')
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    buttonText.style.display = 'inline';
+                    loader.style.display = 'none';
+                    processButton.disabled = false;
+                    processButton.style.opacity = '1';
+                    processButton.style.cursor = 'pointer';
+
+                    if (data.success) {
+                        displayResults(data.original_text, data.processed_text, data.provider, data.mode_label);
+                    } else {
+                        showError(data.error);
+                    }
+                })
+                .catch(error => {
+                    buttonText.style.display = 'inline';
+                    loader.style.display = 'none';
+                    processButton.disabled = false;
+                    processButton.style.opacity = '1';
+                    processButton.style.cursor = 'pointer';
+
+                    showError('An error occurred: ' + error.message);
+                });
+            });
+
+            function displayResults(originalText, processedText, provider, modeLabel) {
+                const existingResults = document.querySelector('.results');
+                if (existingResults) {
+                    existingResults.remove();
+                }
+
+                const resultsHTML = `
+                    <div class="results">
+                        <h2>✅ ${modeLabel}</h2>
+                        <div class="result-box">
+                            <div class="result-content">${processedText}</div>
+                            <button onclick="copyToClipboard()" class="btn-copy">📋 Copy</button>
+                        </div>
+
+                        ${originalText !== processedText ? `
+                        <div class="comparison">
+                            <h3>📝 Original vs ${modeLabel}</h3>
+                            <div class="comparison-grid">
+                                <div class="original">
+                                    <h4>Original:</h4>
+                                    <div class="text-box">${originalText}</div>
+                                </div>
+                                <div class="processed">
+                                    <h4>${modeLabel}:</h4>
+                                    <div class="text-box">${processedText}</div>
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+
+                resultsContainer.insertAdjacentHTML('beforeend', resultsHTML);
+
+                const footer = document.querySelector('footer p');
+                footer.textContent = `Powered by ${provider.charAt(0).toUpperCase() + provider.slice(1)} • Textly`;
+            }
+
+            function showError(message) {
+                const existingMessages = document.querySelector('.messages');
+                if (existingMessages) {
+                    existingMessages.remove();
+                }
+
+                const errorHTML = `
+                    <div class="messages">
+                        <div class="message error">${message}</div>
+                    </div>
+                `;
+
+                const main = document.querySelector('main');
+                main.insertAdjacentHTML('afterbegin', errorHTML);
+            }
+        });
+    </script>
+</body>
+</html>
