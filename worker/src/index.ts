@@ -172,6 +172,13 @@ export default {
           );
         }
 
+        if (text.trim().length > 10000) {
+          return Response.json(
+            { error: "Text exceeds maximum length of 10,000 characters." },
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
         if (!MODE_LABELS[mode]) {
           return Response.json(
             { error: `Unsupported mode: ${mode ?? "missing"}` },
@@ -210,6 +217,6 @@ export default {
       }
     }
 
-    return new Response("Not Found", { status: 404 });
+    return new Response("Not Found", { status: 404, headers: corsHeaders });
   },
 };

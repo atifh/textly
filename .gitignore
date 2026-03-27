@@ -54,3 +54,6 @@ venv/*
 # Node
 node_modules/
 
+# Wrangler local cache
+.wrangler/
+
