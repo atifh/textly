@@ -18,6 +18,9 @@ jobs:
       - name: Inject Worker URL
         run: sed -i "s|https://textly-worker.YOUR-SUBDOMAIN.workers.dev|${{ secrets.WORKER_URL }}|g" frontend/index.html
 
+      - name: Verify injection
+        run: grep "WORKER_URL" frontend/index.html
+
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy . --project-name=textly
         working-directory: frontend
