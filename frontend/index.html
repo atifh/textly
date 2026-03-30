@@ -7,7 +7,28 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <div class="container">
+    <!-- Passphrase Gate -->
+    <div id="gate" class="container" style="display:none;">
+        <header>
+            <h1>✍️ Textly</h1>
+            <p>Enter passphrase to continue</p>
+        </header>
+        <main>
+            <form id="passphraseForm">
+                <div class="form-group">
+                    <label for="passphrase">Passphrase:</label>
+                    <input type="password" id="passphrase" placeholder="Enter passphrase..." required style="width:100%;padding:10px;font-size:1rem;border:2px solid #e1e5e9;border-radius:8px;box-sizing:border-box;">
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn-primary" id="passphraseButton">🔑 Enter</button>
+                </div>
+                <div id="passphraseError" style="color:#e74c3c;display:none;margin-top:8px;"></div>
+            </form>
+        </main>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="container" style="display:none;">
         <header>
             <h1>✍️ Textly</h1>
             <p>AI-powered text processing: fix, rewrite, summarize, expand & analyze</p>
@@ -61,7 +82,7 @@
 
     <script>
         const WORKER_URL = 'https://textly-worker.YOUR-SUBDOMAIN.workers.dev';
-        const BASIC_AUTH = 'Basic ' + btoa('__BASIC_AUTH_USERNAME__:__BASIC_AUTH_PASSWORD__');
+        const AUTH_KEY = 'textly_auth';
 
         function escapeHTML(str) {
             const div = document.createElement('div');
@@ -69,49 +90,94 @@
             return div.innerHTML;
         }
 
-        function copyToClipboard() {
-            const resultContent = document.querySelector('.result-content');
-            const text = resultContent.textContent;
+        function getStoredAuth() {
+            try {
+                const raw = localStorage.getItem(AUTH_KEY);
+                if (!raw) return null;
+                const auth = JSON.parse(raw);
+                if (!auth.token || !auth.expiresAt) return null;
+                if (Date.now() > auth.expiresAt) {
+                    localStorage.removeItem(AUTH_KEY);
+                    return null;
+                }
+                return auth;
+            } catch {
+                return null;
+            }
+        }
 
-            navigator.clipboard.writeText(text).then(() => {
-                const button = document.querySelector('.btn-copy');
-                const originalText = button.textContent;
-                button.textContent = '✅ Copied!';
-                setTimeout(() => {
-                    button.textContent = originalText;
-                }, 2000);
-            }).catch(err => {
-                console.error('Failed to copy text: ', err);
+        function storeAuth(token, expiresAt) {
+            localStorage.setItem(AUTH_KEY, JSON.stringify({ token, expiresAt }));
+        }
+
+        function clearAuth() {
+            localStorage.removeItem(AUTH_KEY);
+            document.getElementById('app').style.display = 'none';
+            document.getElementById('gate').style.display = 'block';
+        }
+
+        function showApp() {
+            document.getElementById('gate').style.display = 'none';
+            document.getElementById('app').style.display = 'block';
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const auth = getStoredAuth();
+            if (auth) {
+                showApp();
+            } else {
+                document.getElementById('gate').style.display = 'block';
+            }
+
+            // Passphrase form
+            document.getElementById('passphraseForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                const passphrase = document.getElementById('passphrase').value;
+                const errorEl = document.getElementById('passphraseError');
+                const button = document.getElementById('passphraseButton');
+                button.disabled = true;
+                button.textContent = '⏳ Checking...';
+                errorEl.style.display = 'none';
+
+                fetch(WORKER_URL.replace(/\/$/, '') + '/api/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ passphrase })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    button.disabled = false;
+                    button.textContent = '🔑 Enter';
+                    if (data.token) {
+                        storeAuth(data.token, data.expiresAt);
+                        showApp();
+                    } else {
+                        errorEl.textContent = data.error || 'Invalid passphrase.';
+                        errorEl.style.display = 'block';
+                    }
+                })
+                .catch(() => {
+                    button.disabled = false;
+                    button.textContent = '🔑 Enter';
+                    errorEl.textContent = 'Connection error. Please try again.';
+                    errorEl.style.display = 'block';
+                });
             });
-        }
 
-        function updateButtonText() {
-            const mode = document.getElementById('mode').value;
-            const buttonText = document.getElementById('buttonText');
-
-            const buttonTexts = {
-                'fix': '🔧 Fix Grammar',
-                'rewrite_formal': '👔 Make Formal',
-                'rewrite_casual': '💬 Make Casual',
-                'summarize': '📝 Summarize',
-                'expand': '📈 Expand Text',
-                'sentiment': '😊 Analyze Sentiment'
-            };
-
-            buttonText.textContent = buttonTexts[mode] || '✨ Process Text';
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
+            // Main app form
             const form = document.getElementById('grammarForm');
             const processButton = document.getElementById('processButton');
             const buttonText = processButton.querySelector('.button-text');
             const loader = processButton.querySelector('.loader');
-            const resultsContainer = document.querySelector('main');
+            const resultsContainer = document.querySelector('#app main');
 
             updateButtonText();
 
-            form.addEventListener('submit', function(e) {
+            form.addEventListener('submit', function (e) {
                 e.preventDefault();
+
+                const auth = getStoredAuth();
+                if (!auth) { clearAuth(); return; }
 
                 buttonText.style.display = 'none';
                 loader.style.display = 'inline';
@@ -121,16 +187,25 @@
 
                 const formData = new FormData(form);
 
-                fetch(WORKER_URL + '/api/process', {
+                fetch(WORKER_URL.replace(/\/$/, '') + '/api/process', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': BASIC_AUTH },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + auth.token
+                    },
                     body: JSON.stringify({
                         text: formData.get('text'),
                         mode: formData.get('mode'),
                         provider: formData.get('provider')
                     })
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (response.status === 401) {
+                        clearAuth();
+                        throw new Error('Session expired. Please enter the passphrase again.');
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     buttonText.style.display = 'inline';
                     loader.style.display = 'none';
@@ -150,16 +225,13 @@
                     processButton.disabled = false;
                     processButton.style.opacity = '1';
                     processButton.style.cursor = 'pointer';
-
-                    showError('An error occurred: ' + error.message);
+                    showError(error.message || 'An error occurred.');
                 });
             });
 
             function displayResults(originalText, processedText, provider, modeLabel) {
-                const existingResults = document.querySelector('.results');
-                if (existingResults) {
-                    existingResults.remove();
-                }
+                const existingResults = resultsContainer.querySelector('.results');
+                if (existingResults) existingResults.remove();
 
                 const resultsHTML = `
                     <div class="results">
@@ -168,7 +240,6 @@
                             <div class="result-content">${escapeHTML(processedText)}</div>
                             <button onclick="copyToClipboard()" class="btn-copy">📋 Copy</button>
                         </div>
-
                         ${originalText !== processedText ? `
                         <div class="comparison">
                             <h3>📝 Original vs ${escapeHTML(modeLabel)}</h3>
@@ -182,33 +253,48 @@
                                     <div class="text-box">${escapeHTML(processedText)}</div>
                                 </div>
                             </div>
-                        </div>
-                        ` : ''}
+                        </div>` : ''}
                     </div>
                 `;
-
                 resultsContainer.insertAdjacentHTML('beforeend', resultsHTML);
-
                 const footer = document.querySelector('footer p');
                 footer.textContent = `Powered by ${escapeHTML(provider.charAt(0).toUpperCase() + provider.slice(1))} • Textly`;
             }
 
             function showError(message) {
-                const existingMessages = document.querySelector('.messages');
-                if (existingMessages) {
-                    existingMessages.remove();
-                }
-
-                const errorHTML = `
+                const existingMessages = resultsContainer.querySelector('.messages');
+                if (existingMessages) existingMessages.remove();
+                resultsContainer.insertAdjacentHTML('afterbegin', `
                     <div class="messages">
                         <div class="message error">${escapeHTML(message)}</div>
                     </div>
-                `;
-
-                const main = document.querySelector('main');
-                main.insertAdjacentHTML('afterbegin', errorHTML);
+                `);
             }
         });
+
+        function copyToClipboard() {
+            const resultContent = document.querySelector('.result-content');
+            navigator.clipboard.writeText(resultContent.textContent).then(() => {
+                const button = document.querySelector('.btn-copy');
+                const orig = button.textContent;
+                button.textContent = '✅ Copied!';
+                setTimeout(() => { button.textContent = orig; }, 2000);
+            });
+        }
+
+        function updateButtonText() {
+            const mode = document.getElementById('mode').value;
+            const buttonText = document.getElementById('buttonText');
+            const buttonTexts = {
+                'fix': '🔧 Fix Grammar',
+                'rewrite_formal': '👔 Make Formal',
+                'rewrite_casual': '💬 Make Casual',
+                'summarize': '📝 Summarize',
+                'expand': '📈 Expand Text',
+                'sentiment': '😊 Analyze Sentiment'
+            };
+            buttonText.textContent = buttonTexts[mode] || '✨ Process Text';
+        }
     </script>
 </body>
 </html>
