@@ -24,6 +24,17 @@ jobs:
         run: npm install
         working-directory: worker
 
+      - name: Set Worker secrets
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "${{ secrets.OPENAI_API_KEY }}" | npx wrangler secret put OPENAI_API_KEY
+          echo "${{ secrets.ANTHROPIC_API_KEY }}" | npx wrangler secret put ANTHROPIC_API_KEY
+          echo "${{ secrets.PASSPHRASE }}" | npx wrangler secret put PASSPHRASE
+          echo "${{ secrets.TOKEN_SECRET }}" | npx wrangler secret put TOKEN_SECRET
+
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:
