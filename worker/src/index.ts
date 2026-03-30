@@ -150,8 +150,9 @@ export default {
     }
 
     const url = new URL(request.url);
+    const pathname = url.pathname.replace(/\/+/g, "/");
 
-    if (url.pathname === "/api/process" && request.method === "POST") {
+    if (pathname === "/api/process" && request.method === "POST") {
       let body: ProcessRequest;
       try {
         body = (await request.json()) as ProcessRequest;
