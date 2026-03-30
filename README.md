@@ -1,6 +1,6 @@
 # Textly
 
-AI-powered text processing that transforms your writing. A sleek Flask web application that can fix grammar, rewrite tone, summarize content, expand details, and analyze sentiment while preserving your intent. Supports both OpenAI GPT and Anthropic Claude.
+AI-powered text processing that transforms your writing. Deployed as a Cloudflare Worker (API) + Cloudflare Pages (frontend). Supports both OpenAI GPT and Anthropic Claude.
 
 ## Screenshots
 ![Main Interface](screenshots/main-interface.png)
@@ -8,85 +8,86 @@ AI-powered text processing that transforms your writing. A sleek Flask web appli
 
 ## Features
 
-### 🚀 Text Processing Modes
-- 🔧 **Grammar & Spelling Fix**: Correct errors while preserving your style
-- 👔 **Make Formal**: Convert text to professional, business-appropriate tone
-- 💬 **Make Casual**: Transform text to friendly, conversational style  
-- 📝 **Summarize**: Condense long texts while maintaining key points
-- 📈 **Expand & Detail**: Make text more comprehensive and professional
-- 😊 **Sentiment Analysis**: Detect emotional tone (positive/negative/neutral)
+### Text Processing Modes
+- **Grammar & Spelling Fix**: Correct errors while preserving your style
+- **Make Formal**: Convert text to professional, business-appropriate tone
+- **Make Casual**: Transform text to friendly, conversational style
+- **Summarize**: Condense long texts while maintaining key points
+- **Expand & Detail**: Make text more comprehensive and professional
+- **Sentiment Analysis**: Detect emotional tone (positive/negative/neutral)
 
-### ⚡ Core Features
-- 🔄 Switch between OpenAI GPT and Anthropic Claude
-- 📱 Responsive web interface with intuitive controls
-- 📋 Copy processed text to clipboard with one click
-- 📊 Side-by-side comparison of original vs processed text
-- ✨ Dynamic button labels that update based on selected mode
-- 🎯 AI-powered processing that maintains context and meaning
+### Core Features
+- Switch between OpenAI GPT (`gpt-4o-mini`) and Anthropic Claude (`claude-haiku-4-5`)
+- Passphrase-protected access with 24-hour HMAC-signed token sessions
+- Responsive web interface with side-by-side comparison of original vs processed text
+- Copy processed text to clipboard with one click
 
-## Setup
+## Architecture
 
-1. **Install Dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. **Configure API Keys**
-   ```bash
-   cp .env.example .env
-   ```
-   
-   Edit `.env` file and add your API keys:
-   - Get OpenAI API key from: https://platform.openai.com/api-keys
-   - Get Anthropic API key from: https://console.anthropic.com/
-   
-   You need at least one API key for the app to work.
-
-3. **Run the Application**
-   ```bash
-   python app.py
-   ```
-   
-   The app will be available at: http://localhost:5000
-
-## Usage
-
-1. **Open the web interface** at http://localhost:5002
-2. **Enter your text** in the textarea (type or paste)
-3. **Select processing mode**:
-   - 🔧 Grammar & Spelling Fix - Fix errors while preserving style
-   - 👔 Make Formal - Convert to professional tone
-   - 💬 Make Casual - Convert to conversational tone
-   - 📝 Summarize - Create concise summary
-   - 📈 Expand & Detail - Add depth and professionalism
-   - 😊 Sentiment Analysis - Analyze emotional tone
-4. **Choose AI provider** (OpenAI GPT or Anthropic Claude)
-5. **Click the process button** (label updates based on selected mode)
-6. **Review results** with side-by-side comparison
-7. **Copy processed text** to clipboard for use elsewhere
-
-## Project Structure
+```
+Browser → Cloudflare Pages (frontend)
+              ↓ POST /api/auth or /api/process
+          Cloudflare Worker (API)
+              ↓
+          OpenAI API / Anthropic API
+```
 
 ```
 textly/
-├── app.py                  # Main Flask application
-├── ai_service.py          # AI service layer (OpenAI/Claude)
-├── requirements.txt       # Python dependencies
-├── .env                   # Environment variables
-├── templates/
-│   └── index.html        # Main web interface
-└── static/
-    └── css/
-        └── style.css     # Styles and responsive design
+├── worker/                        # Cloudflare Worker (TypeScript)
+│   ├── src/index.ts               # API routes: /api/auth, /api/process
+│   ├── wrangler.toml
+│   └── package.json
+├── frontend/                      # Static site (Cloudflare Pages)
+│   ├── index.html                 # Passphrase gate + main UI
+│   ├── static/css/style.css
+│   └── wrangler.toml
+├── .github/workflows/
+│   ├── deploy-worker.yml          # Deploys Worker on worker/** changes
+│   └── deploy-pages.yml          # Deploys Pages on frontend/** changes
+├── docs/plans/                    # Design and implementation docs
+├── app.py                         # Original Flask app (reference only)
+└── ai_service.py                  # Original AI service (reference only)
 ```
 
-## Health Check
+## Deployment
 
-Visit `/health` endpoint to check the status and available AI providers.
+### Prerequisites
 
-## Notes
+- Cloudflare account
+- GitHub repository with Actions enabled
 
-- The app preserves the original tone and writing style
-- Only grammar and spelling errors are corrected
-- Both AI providers use low temperature (0.1) for consistent results
-- Responsive design works on mobile and desktop
+### GitHub Secrets
+
+| Secret | Description |
+|--------|-------------|
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API token with Workers + Pages permissions |
+| `CLOUDFLARE_ACCOUNT_ID` | Found on Workers & Pages overview page |
+| `WORKER_URL` | Full Worker URL e.g. `https://textly-worker.<your-subdomain>.workers.dev` |
+
+### Cloudflare Worker Secrets
+
+Set these once via Wrangler CLI:
+
+```bash
+cd worker
+npx wrangler secret put OPENAI_API_KEY
+npx wrangler secret put ANTHROPIC_API_KEY
+npx wrangler secret put PASSPHRASE
+npx wrangler secret put TOKEN_SECRET   # openssl rand -hex 32
+```
+
+### Deploy
+
+Push to `master` — GitHub Actions deploys automatically:
+- Changes to `worker/**` trigger the Worker deploy
+- Changes to `frontend/**` trigger the Pages deploy
+
+Both workflows can also be triggered manually from the Actions tab.
+
+## Usage
+
+1. Visit your Cloudflare Pages URL
+2. Enter the passphrase — valid for 24 hours
+3. Enter your text, select a processing mode and AI provider
+4. Click the process button and review results
