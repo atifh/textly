@@ -193,7 +193,44 @@ export default {
     const url = new URL(request.url);
     const pathname = url.pathname.replace(/\/+/g, "/");
 
+    if (pathname === "/api/auth" && request.method === "POST") {
+      let body: { passphrase?: string };
+      try {
+        body = (await request.json()) as { passphrase?: string };
+      } catch {
+        return Response.json(
+          { error: "Invalid JSON body." },
+          { status: 400, headers: corsHeaders }
+        );
+      }
+      if (!body.passphrase || body.passphrase !== env.PASSPHRASE) {
+        return Response.json(
+          { error: "Invalid passphrase." },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+      const { token, expiresAt } = await generateToken(env.TOKEN_SECRET);
+      return Response.json({ token, expiresAt }, { headers: corsHeaders });
+    }
+
     if (pathname === "/api/process" && request.method === "POST") {
+      // Verify Bearer token
+      const authHeader = request.headers.get("Authorization");
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return Response.json(
+          { error: "Session expired." },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+      const token = authHeader.slice(7);
+      const valid = await verifyToken(token, env.TOKEN_SECRET);
+      if (!valid) {
+        return Response.json(
+          { error: "Session expired." },
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
       let body: ProcessRequest;
       try {
         body = (await request.json()) as ProcessRequest;
