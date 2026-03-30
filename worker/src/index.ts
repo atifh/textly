@@ -1,6 +1,8 @@
 interface Env {
   OPENAI_API_KEY: string;
   ANTHROPIC_API_KEY: string;
+  BASIC_AUTH_USERNAME: string;
+  BASIC_AUTH_PASSWORD: string;
 }
 
 interface ProcessRequest {
@@ -141,12 +143,28 @@ export default {
     const corsHeaders = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
     };
 
     // Handle CORS preflight
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: corsHeaders });
+    }
+
+    // Basic Auth
+    const authHeader = request.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Basic ")) {
+      return new Response("Unauthorized", {
+        status: 401,
+        headers: { "WWW-Authenticate": 'Basic realm="Textly"' },
+      });
+    }
+    const [username, password] = atob(authHeader.slice(6)).split(":");
+    if (username !== env.BASIC_AUTH_USERNAME || password !== env.BASIC_AUTH_PASSWORD) {
+      return new Response("Unauthorized", {
+        status: 401,
+        headers: { "WWW-Authenticate": 'Basic realm="Textly"' },
+      });
     }
 
     const url = new URL(request.url);

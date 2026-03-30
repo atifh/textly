@@ -61,6 +61,7 @@
 
     <script>
         const WORKER_URL = 'https://textly-worker.YOUR-SUBDOMAIN.workers.dev';
+        const BASIC_AUTH = 'Basic ' + btoa('__BASIC_AUTH_USERNAME__:__BASIC_AUTH_PASSWORD__');
 
         function escapeHTML(str) {
             const div = document.createElement('div');
@@ -122,7 +123,7 @@
 
                 fetch(WORKER_URL + '/api/process', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': BASIC_AUTH },
                     body: JSON.stringify({
                         text: formData.get('text'),
                         mode: formData.get('mode'),
