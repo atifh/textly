@@ -13,6 +13,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Inject Worker URL
+        run: sed -i "s|https://textly-worker.YOUR-SUBDOMAIN.workers.dev|${{ secrets.WORKER_URL }}|g" frontend/index.html
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
