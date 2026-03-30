@@ -138,6 +138,45 @@ async function callAnthropic(env: Env, text: string, mode: string): Promise<stri
   return data.content[0].text.trim();
 }
 
+const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+async function generateToken(secret: string): Promise<{ token: string; expiresAt: number }> {
+  const expiresAt = Date.now() + TOKEN_EXPIRY_MS;
+  const payload = String(expiresAt);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
+  const token = btoa(String.fromCharCode(...new Uint8Array(signature))) + "." + payload;
+  return { token, expiresAt };
+}
+
+async function verifyToken(token: string, secret: string): Promise<boolean> {
+  const parts = token.split(".");
+  if (parts.length !== 2) return false;
+  const [sigB64, payload] = parts;
+  const expiresAt = Number(payload);
+  if (isNaN(expiresAt) || Date.now() > expiresAt) return false;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["verify"]
+  );
+  let sigBytes: Uint8Array;
+  try {
+    sigBytes = Uint8Array.from(atob(sigB64), (c) => c.charCodeAt(0));
+  } catch {
+    return false;
+  }
+  return crypto.subtle.verify("HMAC", key, sigBytes, new TextEncoder().encode(payload));
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const corsHeaders = {
